@@ -1,5 +1,6 @@
 using TMPro;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class GameManager : MonoBehaviour
 {
@@ -21,11 +22,15 @@ public class GameManager : MonoBehaviour
 	[SerializeField] private Trajectory trajectory;
 	[SerializeField] private LevelGenerator levelGenerator;
 	[SerializeField] private TMP_Text scoreText;
+	[SerializeField] private TMP_Text scoreMessage;
+	[SerializeField] private TMP_Text loseText;
+	[SerializeField] private GameObject startPanel;
+	[SerializeField] private GameObject losePanel;
 	[SerializeField] private float pushForce = 4f;
 	[SerializeField] private float maxLength = 13f;
 
 	private Camera _mainCamera;
-	private bool _isDragging = false, _ballIsGetting = false;
+	private bool _isDragging = false, _ballIsGetting = false, _isStart = true;
 	private Vector2 _startPoint, _endPoint, _direction, _force;
 	private float _distance;
 	private int _combo = 0, _pushCount, _score = 0;
@@ -33,11 +38,31 @@ public class GameManager : MonoBehaviour
 	private void Start()
 	{
 		_mainCamera = Camera.main;
+		ball.FreezeBall();
+		scoreText.text = $"Best\n {PlayerPrefs.GetInt("Score", 0)}";
+		
 	}
 
 	private void Update()
 	{
-		if (!ball.ReadyToPush)
+        if (ball.IsFall)
+        {
+            if (_score == 0)
+            {
+				ball.BallReset();
+				return;
+            }
+
+			if (_score > PlayerPrefs.GetInt("Score", 0))
+			{
+				PlayerPrefs.SetInt("Score", _score);
+				loseText.text = $"New Score!\n{_score}";
+			}
+			losePanel.SetActive(true);
+			return;
+		}
+
+		if (!ball.ReadyToPush || _isStart)
 		{
 			return;
 		}
@@ -48,10 +73,11 @@ public class GameManager : MonoBehaviour
 			if (ball.HitCurrentHoop || _pushCount == 0) return;
 
 			levelGenerator.ActivateNextHoop(ball.BallPosition);
+			scoreMessage.text = string.Empty;
 
 			if (ball.CollisionObstacle)
             {
-				Debug.Log("+1");
+				scoreMessage.text = "+1";
 				_score += 1;
 				_combo = 0;
 			}
@@ -59,15 +85,17 @@ public class GameManager : MonoBehaviour
             {
                 if (ball.Rebound)
                 {
-					Debug.Log("Rebound! +1");
+					scoreMessage.text = "Rebound! +1";
 					_score += 1;
 				}
 
 				if (_combo < 3) _combo++;
-				Debug.Log($"Perfect! +{_combo * 2}");
+				scoreMessage.text += $"\nPerfect! +{_combo * 2}";
 				_score += _combo * 2;
 			}
 
+			scoreMessage.transform.position = ball.BallPosition;
+			scoreMessage.GetComponent<Animator>().SetTrigger("ShowMessage");
 			scoreText.text = $"{_score}";
 		}
 
@@ -119,5 +147,19 @@ public class GameManager : MonoBehaviour
 		trajectory.Hide();
 	}
 
-    #endregion
+	#endregion
+
+	public void StartClick()
+	{
+		_combo = 0; _pushCount = 0; _score = 0;
+		startPanel.SetActive(false);
+		ball.UnfreezeBall();
+		scoreText.text = "0";
+		_isStart = false;
+	}
+
+	public void RestartClick()
+    {
+		SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+	}
 }

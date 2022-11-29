@@ -4,18 +4,24 @@ using UnityEngine;
 public class Ball : MonoBehaviour
 {
 	private Rigidbody2D ballRigidbody;
-	private bool _readyToPush, _collisionObstacle, _rebound, _hitCurrentHoop;
-	[SerializeField] private GameObject _currentHoop;
+	private bool _readyToPush, _collisionObstacle, _rebound, _hitCurrentHoop, _isFall;
+	private Vector3 _startPosition;
+	[SerializeField] private GameObject currentHoop;
+	[SerializeField] private AudioClip hitObstacle;
+	[SerializeField] private AudioClip ballGetting;
+	[SerializeField] private AudioSource audioSource;
 
 	[HideInInspector] public Vector3 BallPosition { get { return transform.position; } }
 	public bool ReadyToPush { get => _readyToPush; }
 	public bool CollisionObstacle { get => _collisionObstacle; }
 	public bool Rebound { get => _rebound; }
 	public bool HitCurrentHoop { get => _hitCurrentHoop; }
+	public bool IsFall { get => _isFall; }
 
 	private void Awake()
 	{
 		ballRigidbody = GetComponent<Rigidbody2D>();
+		_startPosition = transform.position;
 	}
 
 	public void Push(Vector2 force)
@@ -32,6 +38,7 @@ public class Ball : MonoBehaviour
 	{
 		ballRigidbody.constraints = RigidbodyConstraints2D.None;
 		ballRigidbody.freezeRotation = false;
+		ballRigidbody.angularVelocity = 0.01f;
 	}
 
 	public void FreezeBall()
@@ -42,19 +49,34 @@ public class Ball : MonoBehaviour
 		ballRigidbody.freezeRotation = true;
 	}
 
-	private void OnTriggerStay2D(Collider2D collision)
+	public void BallReset()
     {
-        if (collision.CompareTag("LoseZone"))
-        {
-			Debug.Log("Lose");
-        }
+		transform.position = _startPosition;
+		ballRigidbody.velocity = Vector3.zero;
+		ballRigidbody.angularVelocity = 0.01f;
+		_readyToPush = false;
+		_collisionObstacle = false;
+		_rebound = false;
+		_isFall = false;
+	}
 
-		if (_readyToPush) return;
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
+		if (collision.CompareTag("LoseZone"))
+		{
+			_isFall = true;
+		}
+	}
+
+    private void OnTriggerStay2D(Collider2D collision)
+    {
+        if (_readyToPush) return;
 
         if (collision.CompareTag("BallGettingZone"))
         {
-			_hitCurrentHoop = _currentHoop.Equals(collision.gameObject);
-			if (!_hitCurrentHoop) _currentHoop = collision.gameObject;
+			audioSource.PlayOneShot(ballGetting);
+			_hitCurrentHoop = currentHoop.Equals(collision.gameObject);
+			if (!_hitCurrentHoop) currentHoop = collision.gameObject;
 
 			_readyToPush = true;
 		}
@@ -62,12 +84,14 @@ public class Ball : MonoBehaviour
 
     private void OnCollisionEnter2D(Collision2D collision)
     {
-        if (collision.gameObject.CompareTag("Obstacle"))
+		if (collision.gameObject.CompareTag("Obstacle"))
         {
+			audioSource.PlayOneShot(hitObstacle);
 			_collisionObstacle = true;
 		}
 		else if (collision.gameObject.CompareTag("Wall"))
         {
+			audioSource.PlayOneShot(hitObstacle);
 			_rebound = true;
 		}
 	}
