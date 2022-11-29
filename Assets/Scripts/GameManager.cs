@@ -1,3 +1,4 @@
+using TMPro;
 using UnityEngine;
 
 public class GameManager : MonoBehaviour
@@ -18,13 +19,16 @@ public class GameManager : MonoBehaviour
 
 	[SerializeField] private Ball ball;
 	[SerializeField] private Trajectory trajectory;
+	[SerializeField] private LevelGenerator levelGenerator;
+	[SerializeField] private TMP_Text scoreText;
 	[SerializeField] private float pushForce = 4f;
 	[SerializeField] private float maxLength = 13f;
 
 	private Camera _mainCamera;
-	private bool _isDragging = false;
+	private bool _isDragging = false, _ballIsGetting = false;
 	private Vector2 _startPoint, _endPoint, _direction, _force;
 	private float _distance;
+	private int _combo = 0, _pushCount, _score = 0;
 
 	private void Start()
 	{
@@ -33,6 +37,40 @@ public class GameManager : MonoBehaviour
 
 	private void Update()
 	{
+		if (!ball.ReadyToPush)
+		{
+			return;
+		}
+		else if(!_ballIsGetting)
+		{
+			_ballIsGetting = true;
+
+			if (ball.HitCurrentHoop || _pushCount == 0) return;
+
+			levelGenerator.ActivateNextHoop(ball.BallPosition);
+
+			if (ball.CollisionObstacle)
+            {
+				Debug.Log("+1");
+				_score += 1;
+				_combo = 0;
+			}
+            else
+            {
+                if (ball.Rebound)
+                {
+					Debug.Log("Rebound! +1");
+					_score += 1;
+				}
+
+				if (_combo < 3) _combo++;
+				Debug.Log($"Perfect! +{_combo * 2}");
+				_score += _combo * 2;
+			}
+
+			scoreText.text = $"{_score}";
+		}
+
         if (Input.GetMouseButtonDown(0)) //Enter drag
 		{
 			_isDragging = true;
@@ -47,6 +85,8 @@ public class GameManager : MonoBehaviour
 		if (Input.GetMouseButtonUp(0)) //Exit drag
 		{
 			_isDragging = false;
+			_ballIsGetting = false;
+			_pushCount++;
 			OnDragExit();
 		}
 	}
@@ -55,7 +95,7 @@ public class GameManager : MonoBehaviour
 
 	private void OnDragEnter()
 	{
-		ball.DisablePhysics();
+		ball.FreezeBall();
 		_startPoint = _mainCamera.ScreenToWorldPoint(Input.mousePosition);
 
 		trajectory.Show();
@@ -74,7 +114,7 @@ public class GameManager : MonoBehaviour
 
 	private void OnDragExit()
 	{
-		ball.EnablePhysics();
+		ball.UnfreezeBall();
 		ball.Push(_force);
 		trajectory.Hide();
 	}

@@ -4,10 +4,14 @@ using UnityEngine;
 public class Ball : MonoBehaviour
 {
 	private Rigidbody2D ballRigidbody;
+	private bool _readyToPush, _collisionObstacle, _rebound, _hitCurrentHoop;
+	[SerializeField] private GameObject _currentHoop;
+
 	[HideInInspector] public Vector3 BallPosition { get { return transform.position; } }
-	[SerializeField] private bool _readyToPush = true;
-	[SerializeField] private bool _collisionObstacle = false;
-	[SerializeField] private bool _rebound = false;
+	public bool ReadyToPush { get => _readyToPush; }
+	public bool CollisionObstacle { get => _collisionObstacle; }
+	public bool Rebound { get => _rebound; }
+	public bool HitCurrentHoop { get => _hitCurrentHoop; }
 
 	private void Awake()
 	{
@@ -24,31 +28,34 @@ public class Ball : MonoBehaviour
 		_rebound = false;
 	}
 
-	public void EnablePhysics()
+	public void UnfreezeBall()
 	{
-		ballRigidbody.isKinematic = false;
+		ballRigidbody.constraints = RigidbodyConstraints2D.None;
+		ballRigidbody.freezeRotation = false;
 	}
 
-	public void DisablePhysics()
+	public void FreezeBall()
 	{
 		ballRigidbody.velocity = Vector3.zero;
 		ballRigidbody.angularVelocity = 0f;
-		ballRigidbody.isKinematic = true;
-	}
-
-	public void GetBallGettingInfo(ref bool readyToPush, ref bool collisionObstacle, ref bool rebound)
-    {
-		readyToPush = _readyToPush;
-		collisionObstacle = _collisionObstacle;
-		rebound = _rebound;
+		ballRigidbody.constraints = RigidbodyConstraints2D.FreezePosition;
+		ballRigidbody.freezeRotation = true;
 	}
 
 	private void OnTriggerStay2D(Collider2D collision)
     {
+        if (collision.CompareTag("LoseZone"))
+        {
+			Debug.Log("Lose");
+        }
+
 		if (_readyToPush) return;
 
         if (collision.CompareTag("BallGettingZone"))
         {
+			_hitCurrentHoop = _currentHoop.Equals(collision.gameObject);
+			if (!_hitCurrentHoop) _currentHoop = collision.gameObject;
+
 			_readyToPush = true;
 		}
     }
