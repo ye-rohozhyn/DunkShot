@@ -33,7 +33,7 @@ public class GameManager : MonoBehaviour
 
 	private void Update()
 	{
-		if (Input.GetMouseButtonDown(0)) //Enter drag
+        if (Input.GetMouseButtonDown(0)) //Enter drag
 		{
 			_isDragging = true;
 			OnDragEnter();
